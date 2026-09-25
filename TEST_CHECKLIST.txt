@@ -1,0 +1,92 @@
+UNSTAMMER TEST CHECKLIST
+=========================
+
+ENVIRONMENT SETUP
+[ ] Backend running on localhost:5000 (python app.py)
+[ ] Frontend running on localhost:3000 (npm start)
+[ ] Health check: curl http://localhost:5000/health -> 200 OK
+
+ANALYZE ENDPOINT (/analyze)
+[ ] Valid video upload -> 200 + severity_score, category, metrics
+[ ] No file -> 400 "No file provided"
+[ ] Invalid type (.txt) -> 400 "File format not supported"
+[ ] Empty file -> 400 "No speech detected"
+[ ] Oversize (>100MB) -> 413 "File too large"
+[ ] Both 'file' and 'video' field names work
+
+PDF DOWNLOADS (/download-guide/<type>)
+[ ] minimal -> 200 + PDF binary
+[ ] mild -> 200 + PDF binary
+[ ] severe -> 200 + PDF binary
+[ ] invalid type -> 400 "Invalid PDF type"
+
+CORS & ERROR HANDLING
+[ ] Frontend upload -> no CORS errors in console
+[ ] Network error -> "Unable to connect to server"
+[ ] Timeout -> "Analysis took too long"
+
+CURL COMMANDS FOR MANUAL TESTING
+=================================
+
+# Health check
+curl http://localhost:5000/health
+
+# Valid upload (replace with actual video file)
+curl -X POST http://localhost:5000/analyze -F "file=@test-video.mp4"
+curl -X POST http://localhost:5000/analyze -F "video=@test-video.mp4"
+
+# Error cases
+curl -X POST http://localhost:5000/analyze
+curl -X POST http://localhost:5000/analyze -F "file=@document.txt"
+curl -X POST http://localhost:5000/analyze -F "file=@/dev/null;filename=empty.mp4"
+
+# PDF downloads
+curl -O -J http://localhost:5000/download-guide/minimal
+curl -O -J http://localhost:5000/download-guide/mild
+curl -O -J http://localhost:5000/download-guide/severe
+curl -X GET http://localhost:5000/download-guide/invalid
+
+# Verbose debugging
+curl -v -X POST http://localhost:5000/analyze -F "file=@test-video.mp4"
+
+EXPECTED RESPONSE FORMATS
+=========================
+
+/analyze success (200):
+{
+  "severity_score": 45.5,
+  "category": "mild",
+  "metrics": {
+    "pause_count": 3,
+    "repetition_count": 2,
+    "speech_rate": 120,
+    "filler_count": 4,
+    "audio_duration_seconds": 30.5,
+    "transcribed_text": "..."
+  },
+  "component_scores": {
+    "pause_score": 15,
+    "repetition_score": 6,
+    "variance_score": 10,
+    "filler_score": 4
+  },
+  "pdf_type": "mild",
+  "file_url": "/download-guide/mild"
+}
+
+/download-guide success (200): PDF binary stream
+
+Error responses (400/413/500):
+{"error": "Descriptive error message"}
+
+SEVERITY CATEGORIES
+===================
+- minimal: score < 40
+- mild: 40 <= score < 70
+- severe: score >= 70
+
+ALLOWED FILE EXTENSIONS
+=======================
+mp4, mov, avi, wav, mp3, webm, flac
+
+MAX FILE SIZE: 100MB
