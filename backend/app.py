@@ -28,6 +28,7 @@ UPLOAD_FOLDER = tempfile.gettempdir()
 ALLOWED_EXTENSIONS = {'mp4', 'mov', 'avi', 'mkv', 'webm'}
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
 PDF_FOLDER = os.path.join(os.path.dirname(__file__), 'pdfs')
+WHISPER_MODEL = os.environ.get('WHISPER_MODEL', 'base')
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
@@ -36,9 +37,10 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Load Whisper model (small by default for speed)
+# Load Whisper model
 try:
-    whisper_model = whisper.load_model("base")
+    whisper_model = whisper.load_model(WHISPER_MODEL)
+    logger.info(f"Loaded Whisper model: {WHISPER_MODEL}")
 except Exception as e:
     logger.error(f"Failed to load Whisper model: {e}")
     whisper_model = None
@@ -248,7 +250,8 @@ def health_check():
     return jsonify({
         "status": "ok",
         "timestamp": datetime.now().isoformat(),
-        "whisper_loaded": whisper_model is not None
+        "whisper_loaded": whisper_model is not None,
+        "whisper_model": WHISPER_MODEL
     }), 200
 
 
@@ -398,7 +401,7 @@ def get_stats():
         "timestamp": datetime.now().isoformat(),
         "max_file_size_mb": MAX_FILE_SIZE / (1024 * 1024),
         "supported_formats": list(ALLOWED_EXTENSIONS),
-        "whisper_model": "base" if whisper_model else "not_loaded"
+        "whisper_model": WHISPER_MODEL if whisper_model else "not_loaded"
     }), 200
 
 
